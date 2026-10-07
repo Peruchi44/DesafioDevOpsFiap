@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb-desafio
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=secret
+      - MONGO_INITDB_DATABASE=mydatabase
+    ports:
+      - "27017:27017"
+    networks:
+      - devops-network
+    volumes:
+      - mongo_data:/data/db
+
+  api:
+    build: .
+    container_name: api-desafio
+    ports:
+      - "8080:8080"
+    environment:
+      # Aqui injetamos as variáveis que o application.properties está à espera
+      - DB_USER=root
+      - DB_PASSWORD=secret
+      - DB_HOST=mongodb  # O host é o nome do serviço do banco de dados acima!
+      - DB_PORT=27017
+      - DB_NAME=mydatabase
+    depends_on:
+      - mongodb
+    networks:
+      - devops-network
+
+networks:
+  devops-network:
+    driver: bridge
+
+volumes:
+  mongo_data:
