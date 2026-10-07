@@ -1,40 +1,70 @@
-version: '3.8'
+name: CI/CD Pipeline - Desafio DevOps
 
-services:
-  mongodb:
-    image: mongo:latest
-    container_name: mongodb-desafio
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=secret
-      - MONGO_INITDB_DATABASE=mydatabase
-    ports:
-      - "27017:27017"
-    networks:
-      - devops-network
-    volumes:
-      - mongo_data:/data/db
+# Define os gatilhos: o pipeline roda quando houver push na main ou na develop
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
 
-  api:
-    build: .
-    container_name: api-desafio
-    ports:
-      - "8080:8080"
-    environment:
-      # Aqui injetamos as variáveis que o application.properties está à espera
-      - DB_USER=root
-      - DB_PASSWORD=secret
-      - DB_HOST=mongodb  # O host é o nome do serviço do banco de dados acima!
-      - DB_PORT=27017
-      - DB_NAME=mydatabase
-    depends_on:
-      - mongodb
-    networks:
-      - devops-network
+jobs:
+  # ETAPA 1: Integração Contínua (CI) - Build e Testes
+  build-and-test:
+    name: Build e Testes (CI)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@v4
 
-networks:
-  devops-network:
-    driver: bridge
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
 
-volumes:
-  mongo_data:
+      - name: Dar permissão de execução para o Maven Wrapper
+        run: chmod +x mvnw
+
+      - name: Executar Testes Automatizados
+        run: ./mvnw test
+
+      - name: Gerar o Pacote da Aplicação (.jar)
+        run: ./mvnw clean package -DskipTests
+
+  # ETAPA 2: Continuous Deployment (CD) - Staging
+  # Só executa se o CI passar e se o commit for na branch 'develop'
+  deploy-staging:
+    name: Deploy em Staging
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@v4
+
+      - name: Build da Imagem Docker (Staging)
+        run: docker build -t orbis-api:staging .
+
+      - name: Simulação de Deploy no Servidor de Staging
+        run: echo "🚀 Deploy realizado com sucesso no ambiente de STAGING!"
+
+  # ETAPA 3: Continuous Deployment (CD) - Produção
+  # Só executa se o CI passar e se o commit for direto na branch 'main'
+  deploy-production:
+    name: Deploy em Produção
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@v4
+
+      - name: Build da Imagem Docker (Produção)
+        run: docker build -t orbis-api:latest .
+
+      - name: Simulação de Deploy no Servidor de Produção
+        run: echo "🚀 Deploy realizado com sucesso no ambiente de PRODUÇÃO!"
