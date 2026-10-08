@@ -1,6 +1,5 @@
 name: CI/CD Pipeline - Desafio DevOps
 
-# Define os gatilhos: o pipeline roda quando houver push na main ou na develop
 on:
   push:
     branches:
@@ -11,7 +10,7 @@ on:
       - main
 
 jobs:
-  # ETAPA 1: Integração Contínua (CI) - Build e Testes
+  # ETAPA 1: Integração Contínua (CI) - Testes
   build-and-test:
     name: Build e Testes (CI)
     runs-on: ubuntu-latest
@@ -32,39 +31,34 @@ jobs:
       - name: Executar Testes Automatizados
         run: ./mvnw test
 
-      - name: Gerar o Pacote da Aplicação (.jar)
-        run: ./mvnw clean package -DskipTests
-
   # ETAPA 2: Continuous Deployment (CD) - Staging
-  # Só executa se o CI passar e se o commit for na branch 'develop'
   deploy-staging:
     name: Deploy em Staging
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     steps:
       - name: Checkout do Repositório
         uses: actions/checkout@v4
 
       - name: Build da Imagem Docker (Staging)
-        run: docker build -t orbis-api:staging .
+        run: docker build -t desafiodevops:staging .
 
       - name: Simulação de Deploy no Servidor de Staging
         run: echo "🚀 Deploy realizado com sucesso no ambiente de STAGING!"
 
   # ETAPA 3: Continuous Deployment (CD) - Produção
-  # Só executa se o CI passar e se o commit for direto na branch 'main'
   deploy-production:
     name: Deploy em Produção
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - name: Checkout do Repositório
         uses: actions/checkout@v4
 
       - name: Build da Imagem Docker (Produção)
-        run: docker build -t orbis-api:latest .
+        run: docker build -t desafiodevops:latest .
 
       - name: Simulação de Deploy no Servidor de Produção
         run: echo "🚀 Deploy realizado com sucesso no ambiente de PRODUÇÃO!"
